@@ -2,7 +2,7 @@
 
 **Embeddable SDK + widget to add [Pacto P2P](https://github.com/PACTO-LAT/pacto-p2p) stablecoin buy/sell flows to any site** — Stripe Checkout–style.
 
-Drop-in components let any dApp or merchant offer "Buy/Sell stablecoins with Pacto" (CRCX, MXNX, USDC) over regional rails (SINPE, SPEI), secured by Trustless Work escrows on Stellar — without integrating the full Pacto platform.
+Drop-in components let any dApp or merchant offer "Buy/Sell USDC with Pacto" over regional payment rails, secured by Trustless Work escrows on Stellar — without integrating the full Pacto platform.
 
 ## Architecture
 
