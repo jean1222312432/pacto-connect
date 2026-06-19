@@ -10,8 +10,13 @@ export type {
   CreateEscrowParams,
   CreateQuoteParams,
   Escrow,
+  EscrowEvent,
+  EscrowEventHandler,
+  EscrowEventName,
+  EscrowMilestone,
   EscrowStatus,
   EscrowStatusResponse,
+  EscrowSubscribeOptions,
   Listing,
   PactoApiClient,
   PactoClient,
@@ -20,6 +25,7 @@ export type {
   Quote,
 } from '@pacto-connect/core';
 export {
+  ESCROW_EVENT_NAMES,
   PactoApiError,
   PactoAuthError,
   PactoError,

@@ -10,6 +10,12 @@ import {
   PactoError,
   PactoSessionError,
 } from './errors.js';
+import {
+  type EscrowEventHandler,
+  type EscrowEventName,
+  EscrowEventSubscriber,
+  type EscrowSubscribeOptions,
+} from './escrow-events.js';
 import { PUBLISHABLE_KEY_HEADER } from './http.js';
 import { createApiClient, type PactoApiClient } from './resources.js';
 
@@ -21,6 +27,14 @@ export {
   PactoRateLimitError,
   PactoSessionError,
 } from './errors.js';
+export {
+  ESCROW_EVENT_NAMES,
+  type EscrowEvent,
+  type EscrowEventHandler,
+  type EscrowEventName,
+  type EscrowMilestone,
+  type EscrowSubscribeOptions,
+} from './escrow-events.js';
 export type {
   CreateEscrowParams,
   CreateQuoteParams,
@@ -47,6 +61,8 @@ export interface PactoInitOptions {
   maxRetries?: number;
   /** Base delay in milliseconds for exponential backoff. */
   baseDelayMs?: number;
+  /** Maximum reconnect attempts for escrow event streams. */
+  maxReconnectAttempts?: number;
 }
 
 export type CreateCheckoutSessionParams =
@@ -74,6 +90,15 @@ interface GatewaySessionResponse {
   mode: CheckoutMode;
 }
 
+interface SessionRuntimeConfig {
+  gatewayUrl: string;
+  publishableKey: string;
+  origin?: string;
+  baseDelayMs?: number;
+  maxRetries?: number;
+  maxReconnectAttempts?: number;
+}
+
 const DEFAULT_GATEWAY_URL = 'https://connect.pacto.example';
 
 function isCheckoutMode(value: string): value is CheckoutMode {
@@ -85,6 +110,8 @@ export class PactoSession {
   readonly clientSecret: string;
   readonly expiresAt: Date;
   readonly mode: CheckoutMode;
+
+  private subscriber?: EscrowEventSubscriber;
 
   constructor(
     private readonly client: InternalPactoClient,
@@ -104,9 +131,34 @@ export class PactoSession {
     const data = await this.client.refreshSession(this.clientSecret);
     return new PactoSession(this.client, data);
   }
+
+  on(event: EscrowEventName, handler: EscrowEventHandler, options?: EscrowSubscribeOptions): void {
+    if (!this.subscriber) {
+      this.subscriber = new EscrowEventSubscriber({
+        gatewayUrl: this.client.runtime.gatewayUrl,
+        publishableKey: this.client.runtime.publishableKey,
+        clientSecret: this.clientSecret,
+        origin: this.client.runtime.origin,
+        baseDelayMs: this.client.runtime.baseDelayMs,
+        maxReconnectAttempts: this.client.runtime.maxReconnectAttempts,
+      });
+    }
+
+    this.subscriber.on(event, handler, options);
+  }
+
+  off(event: EscrowEventName, handler: EscrowEventHandler): void {
+    this.subscriber?.off(event, handler);
+  }
+
+  closeEvents(): void {
+    this.subscriber?.close();
+    this.subscriber = undefined;
+  }
 }
 
 interface InternalPactoClient extends PactoClient {
+  readonly runtime: SessionRuntimeConfig;
   refreshSession(clientSecret: string): Promise<PactoSessionData>;
 }
 
@@ -116,6 +168,16 @@ function createGatewayClient(options: PactoInitOptions): InternalPactoClient {
   const origin = options.origin;
   const maxRetries = options.maxRetries;
   const baseDelayMs = options.baseDelayMs;
+  const maxReconnectAttempts = options.maxReconnectAttempts;
+
+  const runtime: SessionRuntimeConfig = {
+    gatewayUrl,
+    publishableKey,
+    origin,
+    baseDelayMs,
+    maxRetries,
+    maxReconnectAttempts,
+  };
 
   async function requestSession(
     path: string,
@@ -166,6 +228,7 @@ function createGatewayClient(options: PactoInitOptions): InternalPactoClient {
   return {
     publishableKey,
     gatewayUrl,
+    runtime,
     async createCheckoutSession(params: CreateCheckoutSessionParams): Promise<PactoSession> {
       const data = await requestSession('/v1/session', params);
       return new PactoSession(this, data);
