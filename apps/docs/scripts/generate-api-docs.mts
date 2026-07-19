@@ -79,6 +79,10 @@ function runTypedoc(pkg: PackageDef): string {
     `--out "${tmpOut}"`,
     `--readme none`,
     `--githubPages false`,
+    // Pin source links to the `main` branch instead of the current commit SHA,
+    // so committed docs don't drift every time HEAD moves (the CI freshness
+    // check regenerates at its own HEAD and would otherwise always see a diff).
+    `--gitRevision main`,
     `--hidePageHeader true`,
     `--hideBreadcrumbs true`,
     `--useCodeBlocks true`,
@@ -127,16 +131,21 @@ function buildPackageInstall(pkg: PackageDef): string {
   return `# ${pkg.name}\n\n\`\`\`bash\nnpm install ${pkg.name}\n\`\`\`\n\n`;
 }
 
-// Escape bare custom-element tags (names with hyphens like <pacto-checkout>)
-// that appear outside fenced code blocks, so MDX doesn't treat them as JSX.
-function escapeCustomElementsOutsideCodeBlocks(md: string): string {
-  const parts = md.split(/(```[\s\S]*?```)/g);
+// Escape MDX-unsafe sequences that appear outside code (fenced ``` blocks or
+// inline `spans`), so MDX doesn't try to interpret prose as JSX/expressions:
+//   - custom-element tags with hyphens, e.g. <pacto-checkout>
+//   - curly braces from JSDoc text, e.g. placeholders like {amount} — MDX would
+//     otherwise evaluate `{amount}` as a JS expression and crash the render.
+function escapeMdxUnsafeOutsideCode(md: string): string {
+  const parts = md.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
   return parts
     .map((part, i) => {
-      // Odd indices are code blocks — leave them untouched
+      // Odd indices are code (fenced or inline) — leave them untouched
       if (i % 2 === 1) return part;
-      // Replace < with &lt; on custom-element tags so MDX doesn't parse them as JSX
-      return part.replace(/<([a-z][a-z0-9]*(?:-[a-z0-9]+)+)(\s|>|\/)/g, '&lt;$1$2');
+      return part
+        .replace(/<([a-z][a-z0-9]*(?:-[a-z0-9]+)+)(\s|>|\/)/g, '&lt;$1$2')
+        .replace(/\{/g, '&#123;')
+        .replace(/\}/g, '&#125;');
     })
     .join('');
 }
@@ -164,9 +173,9 @@ async function generate(): Promise<void> {
           return hash ? `[${text}](${hash})` : `[${text}](#${file.toLowerCase()})`;
         });
 
-      // Escape bare custom-element tags (e.g. <pacto-checkout>) outside code blocks
-      // so MDX doesn't try to parse them as JSX components.
-      mdxBody = escapeCustomElementsOutsideCodeBlocks(mdxBody);
+      // Escape MDX-unsafe sequences (custom-element tags, JSDoc {braces}) outside
+      // code blocks so MDX doesn't try to parse them as JSX/expressions.
+      mdxBody = escapeMdxUnsafeOutsideCode(mdxBody);
 
       const outContent =
         GENERATED_BANNER +

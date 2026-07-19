@@ -182,6 +182,7 @@ describe('admin routes', () => {
       allowedOrigins: ['https://allowed.example'],
       status: 'active',
       label: null,
+      quoteSpreadBps: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

@@ -13,6 +13,7 @@ export type {
   CreateCheckoutSessionParams,
   CreateEscrowParams,
   CreateQuoteParams,
+  DeepPartial,
   DepositParams,
   Escrow,
   EscrowEvent,
@@ -28,11 +29,16 @@ export type {
   PactoApiClient,
   PactoClient,
   PactoInitOptions,
+  PactoLocale,
+  PactoMessages,
   PactoSessionData,
+  PactoTheme,
   Quote,
 } from '@pacto-connect/core';
 export {
+  buildCheckoutStylesheet,
   CheckoutFlowController,
+  DEFAULT_THEME,
   ESCROW_EVENT_NAMES,
   Pacto,
   PactoApiError,
@@ -42,6 +48,8 @@ export {
   PactoRateLimitError,
   PactoSession,
   PactoSessionError,
+  resolveMessages,
+  themeToCssVars,
 } from '@pacto-connect/core';
 export type {
   UseCheckoutFlowOptions,
@@ -50,3 +58,4 @@ export type {
 export { useCheckoutFlow } from './hooks/useCheckoutFlow.js';
 export type { PactoCheckoutProps } from './PactoCheckout.js';
 export { PactoCheckout } from './PactoCheckout.js';
+export { injectPactoCheckoutStyles } from './styles.js';
