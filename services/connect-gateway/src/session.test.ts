@@ -12,6 +12,7 @@ const mockApiKey: ApiKey = {
   allowedOrigins: ['https://allowed.example'],
   status: 'active',
   label: null,
+  quoteSpreadBps: 0,
   createdAt: new Date('2024-01-01T00:00:00.000Z'),
   updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 };
