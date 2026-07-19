@@ -1,6 +1,5 @@
 import {
   type DeepPartial,
-  type EscrowEvent,
   type FiatPaymentMethod,
   formatMessage,
   type PactoLocale,
