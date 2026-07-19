@@ -1,6 +1,11 @@
 import type { ApiKey } from '@prisma/client';
 import { Hono } from 'hono';
 import { originValidation } from './middleware/origin.js';
+import {
+  createRateLimiter,
+  getRateLimitConfig,
+  rateLimitMiddleware,
+} from './middleware/rate-limit.js';
 import { adminRoutes } from './routes/admin.js';
 import { escrowRoutes } from './routes/escrows.js';
 import { quoteRoutes } from './routes/quote.js';
@@ -13,6 +18,7 @@ type GatewayVariables = {
 
 export function createApp(): Hono<{ Variables: GatewayVariables }> {
   const app = new Hono<{ Variables: GatewayVariables }>();
+  const rateLimiter = createRateLimiter(getRateLimitConfig());
 
   app.get('/health', (c) => c.json({ status: 'ok', service: 'connect-gateway' }));
 
@@ -20,10 +26,27 @@ export function createApp(): Hono<{ Variables: GatewayVariables }> {
 
   app.use('*', async (c, next) => {
     const path = c.req.path;
-    if (path === '/health' || path.startsWith('/admin')) {
+    if (
+      path === '/health' ||
+      path.startsWith('/admin') ||
+      path.startsWith('/v1/webhooks/inbound')
+    ) {
       return next();
     }
     return originValidation(c, next);
+  });
+
+  app.use('*', async (c, next) => {
+    const path = c.req.path;
+    if (
+      path === '/health' ||
+      path.startsWith('/admin') ||
+      path.startsWith('/v1/webhooks/inbound') ||
+      c.req.method === 'OPTIONS'
+    ) {
+      return next();
+    }
+    return rateLimitMiddleware(rateLimiter, (ctx) => ctx.get('apiKey')?.id)(c, next);
   });
 
   app.route('/v1/session', sessionRoutes);
