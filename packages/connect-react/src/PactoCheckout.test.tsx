@@ -459,4 +459,78 @@ describe('PactoCheckout', () => {
       });
     });
   });
+
+  describe('white-label theming', () => {
+    it('renders Spanish copy when locale="es"', async () => {
+      render(
+        <PactoCheckout
+          publishableKey={publishableKey}
+          gatewayUrl={gatewayUrl}
+          listingId={listingId}
+          open
+          onClose={() => {}}
+          locale="es"
+          testMode
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('deposit-step')).toBeInTheDocument();
+      });
+      expect(screen.getByRole('button', { name: 'Confirmar depósito' })).toBeInTheDocument();
+      expect(screen.getByTestId('checkout-test-banner')).toHaveTextContent(
+        'MODO DE PRUEBA — sin fondos reales ni transacciones en Stellar',
+      );
+    });
+
+    it('applies theme CSS variables to the overlay', async () => {
+      render(
+        <PactoCheckout
+          publishableKey={publishableKey}
+          gatewayUrl={gatewayUrl}
+          listingId={listingId}
+          open
+          onClose={() => {}}
+          theme={{ colors: { primary: '#e11d48' } }}
+        />,
+      );
+
+      const overlay = await screen.findByTestId('pacto-checkout-overlay');
+      expect(overlay.style.getPropertyValue('--pacto-color-primary')).toBe('#e11d48');
+    });
+
+    it('renders the brand logo when logoUrl is set', async () => {
+      render(
+        <PactoCheckout
+          publishableKey={publishableKey}
+          gatewayUrl={gatewayUrl}
+          listingId={listingId}
+          open
+          onClose={() => {}}
+          logoUrl="https://cdn.example/logo.svg"
+          logoAlt="Acme"
+        />,
+      );
+
+      const logo = await screen.findByAltText('Acme');
+      expect(logo).toHaveAttribute('src', 'https://cdn.example/logo.svg');
+      expect(logo).toHaveClass('pacto-checkout-logo');
+    });
+
+    it('allows per-string message overrides', async () => {
+      render(
+        <PactoCheckout
+          publishableKey={publishableKey}
+          gatewayUrl={gatewayUrl}
+          listingId={listingId}
+          open
+          onClose={() => {}}
+          messages={{ actions: { confirmDeposit: 'Pay now' } }}
+          testMode
+        />,
+      );
+
+      expect(await screen.findByRole('button', { name: 'Pay now' })).toBeInTheDocument();
+    });
+  });
 });
