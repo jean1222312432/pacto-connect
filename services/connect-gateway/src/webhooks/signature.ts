@@ -36,9 +36,7 @@ export function signPayload(
   const timestamp = timestampSeconds ?? Math.floor(Date.now() / 1000);
   const signedPayload = buildSignedPayload(timestamp, body, nonce);
   const signature = computeSignature(signedPayload, secret);
-  return nonce
-    ? `t=${timestamp},n=${nonce},v1=${signature}`
-    : `t=${timestamp},v1=${signature}`;
+  return nonce ? `t=${timestamp},n=${nonce},v1=${signature}` : `t=${timestamp},v1=${signature}`;
 }
 
 export function parseSignatureHeader(
