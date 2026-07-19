@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { Hono } from 'hono';
 import { toGatewayErrorBody } from '../errors.js';
 import { dispatchEvent } from '../webhooks/delivery.js';
-import { consumeNonce } from '../webhooks/nonce.js';
+import { consumeNonce, releaseNonce } from '../webhooks/nonce.js';
 import {
   DEFAULT_SIGNATURE_TOLERANCE_SECONDS,
   parseSignatureHeader,
@@ -125,6 +125,14 @@ inbound.post('/', async (c) => {
     });
   } catch (error) {
     console.error('[inbound-webhook] dispatch failed', error);
+    try {
+      await releaseNonce(parsed.nonce);
+    } catch (releaseError) {
+      console.error('[inbound-webhook] failed to release nonce after dispatch failure', {
+        nonce: parsed.nonce.slice(0, 64),
+        error: releaseError,
+      });
+    }
     return c.json(
       toGatewayErrorBody('webhook_error', 'dispatch_failed', 'failed to process event'),
       500,

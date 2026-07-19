@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../webhooks/nonce.js', () => ({ consumeNonce: vi.fn() }));
+vi.mock('../webhooks/nonce.js', () => ({ consumeNonce: vi.fn(), releaseNonce: vi.fn() }));
 vi.mock('../webhooks/delivery.js', () => ({ dispatchEvent: vi.fn() }));
 
 import { Hono } from 'hono';
 import { dispatchEvent } from '../webhooks/delivery.js';
-import { consumeNonce } from '../webhooks/nonce.js';
+import { consumeNonce, releaseNonce } from '../webhooks/nonce.js';
 import { signPayload, WEBHOOK_SIGNATURE_HEADER } from '../webhooks/signature.js';
 import { inboundWebhookRoutes } from './inbound-webhooks.js';
 
@@ -41,6 +41,7 @@ describe('inbound webhook receiver', () => {
     process.env.WEBHOOK_REPLAY_TOLERANCE_SECONDS = '300';
     vi.mocked(consumeNonce).mockReset();
     vi.mocked(dispatchEvent).mockReset();
+    vi.mocked(releaseNonce).mockReset();
     vi.useFakeTimers();
     vi.setSystemTime(NOW * 1000);
   });
@@ -136,5 +137,19 @@ describe('inbound webhook receiver', () => {
 
     expect(res.status).toBe(500);
     expect((await res.json()).error.code).toBe('dispatch_failed');
+  });
+
+  it('releases the nonce when dispatch fails so a retry can succeed', async () => {
+    vi.mocked(consumeNonce).mockResolvedValue(true);
+    vi.mocked(dispatchEvent).mockRejectedValue(new Error('boom'));
+
+    const res = await buildApp().request(
+      '/v1/webhooks/inbound',
+      signedRequest(validBody, { nonce: 'nonce_release_me' }),
+    );
+
+    expect(res.status).toBe(500);
+    expect((await res.json()).error.code).toBe('dispatch_failed');
+    expect(releaseNonce).toHaveBeenCalledWith('nonce_release_me');
   });
 });

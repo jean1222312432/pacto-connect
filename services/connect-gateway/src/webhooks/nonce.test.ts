@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../db.js', () => ({
-  prisma: { webhookNonce: { create: vi.fn() } },
+  prisma: { webhookNonce: { create: vi.fn(), delete: vi.fn() } },
 }));
 
 import { prisma } from '../db.js';
-import { consumeNonce } from './nonce.js';
+import { consumeNonce, releaseNonce } from './nonce.js';
 
 describe('consumeNonce', () => {
   beforeEach(() => {
@@ -27,5 +27,26 @@ describe('consumeNonce', () => {
   it('rethrows unexpected errors', async () => {
     vi.mocked(prisma.webhookNonce.create).mockRejectedValue(new Error('db down'));
     await expect(consumeNonce({ nonce: 'n1', expiresAt: new Date() })).rejects.toThrow('db down');
+  });
+});
+
+describe('releaseNonce', () => {
+  beforeEach(() => {
+    vi.mocked(prisma.webhookNonce.delete).mockReset();
+  });
+
+  it('resolves when the nonce is deleted', async () => {
+    vi.mocked(prisma.webhookNonce.delete).mockResolvedValue({} as never);
+    await expect(releaseNonce('n1')).resolves.toBeUndefined();
+  });
+
+  it('does not throw when the nonce is already gone (P2025)', async () => {
+    vi.mocked(prisma.webhookNonce.delete).mockRejectedValue({ code: 'P2025' });
+    await expect(releaseNonce('n1')).resolves.toBeUndefined();
+  });
+
+  it('rethrows unexpected errors', async () => {
+    vi.mocked(prisma.webhookNonce.delete).mockRejectedValue(new Error('db down'));
+    await expect(releaseNonce('n1')).rejects.toThrow('db down');
   });
 });
