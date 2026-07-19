@@ -8,6 +8,7 @@ import {
 } from './middleware/rate-limit.js';
 import { adminRoutes } from './routes/admin.js';
 import { escrowRoutes } from './routes/escrows.js';
+import { inboundWebhookRoutes } from './routes/inbound-webhooks.js';
 import { quoteRoutes } from './routes/quote.js';
 import { sessionRoutes } from './routes/session.js';
 import { testControlRoutes } from './routes/test-controls.js';
@@ -53,6 +54,7 @@ export function createApp(): Hono<{ Variables: GatewayVariables }> {
   app.route('/v1/escrows', escrowRoutes);
   app.route('/v1/test', testControlRoutes);
   app.route('/v1/quote', quoteRoutes);
+  app.route('/v1/webhooks/inbound', inboundWebhookRoutes);
 
   app.all('*', (c) => c.json({ error: 'not found' }, 404));
 
