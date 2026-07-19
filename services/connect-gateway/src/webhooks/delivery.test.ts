@@ -19,6 +19,7 @@ const mockEvent = {
   apiKeyId: 'key_1',
   type: 'escrow.created',
   data: { escrowId: 'esc_1' },
+  sourceEventId: null,
   createdAt: new Date('2024-06-01T12:00:00.000Z'),
 };
 
